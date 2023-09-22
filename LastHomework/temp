@@ -1,0 +1,102 @@
+import requests
+import csv
+import parsel
+import time
+
+f1 = open('北京租房数据.csv', mode='a+', encoding='utf-8', newline='')
+f2 = open('上海租房数据.csv', mode='a+', encoding='utf-8', newline='')
+f3 = open('广州租房数据.csv', mode='a+', encoding='utf-8', newline='')
+f4 = open('深圳租房数据.csv', mode='a+', encoding='utf-8', newline='')
+f5 = open('长沙租房数据.csv', mode='a+', encoding='utf-8', newline='')
+''''''
+csv_writer1 = csv.DictWriter(
+    f1, fieldnames=['名称', '区', '板块', '具体地址', '面积（㎡）', '朝向', '房型', '租价（元/月）'])
+csv_writer2 = csv.DictWriter(
+    f2, fieldnames=['名称', '区', '板块', '具体地址', '面积（㎡）', '朝向', '房型', '租价（元/月）'])
+csv_writer3 = csv.DictWriter(
+    f3, fieldnames=['名称', '区', '板块', '具体地址', '面积（㎡）', '朝向', '房型', '租价（元/月）'])
+csv_writer4 = csv.DictWriter(
+    f4, fieldnames=['名称', '区', '板块', '具体地址', '面积（㎡）', '朝向', '房型', '租价（元/月）'])
+csv_writer5 = csv.DictWriter(
+    f5, fieldnames=['名称', '区', '板块', '具体地址', '面积（㎡）', '朝向', '房型', '租价（元/月）'])
+'''
+csv_writer1.writeheader()
+csv_writer2.writeheader()
+csv_writer3.writeheader()
+csv_writer4.writeheader()
+csv_writer5.writeheader()
+'''
+csv_writer = [csv_writer1, csv_writer2, csv_writer3, csv_writer4, csv_writer5]
+city = ['bj', 'sh', 'gz', 'sz', 'cs']
+# 整租 合租
+manners = ['rt200600000001', 'rt200600000002']
+# 租金
+rentPrices = ['rp1', 'rp2', 'rp3', 'rp4', 'rp5', 'rp6', 'rp7']
+# 户型
+roomTypes = ['l0', 'l1', 'l2', 'l3']
+# 面积
+areaTypes = ['ra0', 'ra1', 'ra2', 'ra3', 'ra4', 'ra5']
+# 朝向 东 南 西 北 南北
+towards = ['f100500000001', 'f100500000005', 'f100500000003', 'f100500000007', 'f100500000009']
+
+# 拼接顺序： 页数 方式 朝向 户型 面积 租金
+# https://bj.lianjia.com/zufang/pg1rt200600000001f100500000001l3ra0rp2/
+
+for i in range(0, 5):  # 城市遍历
+    for manner in range(0, 2):
+        for toward in range(0, 5):
+            for rentPrice in range(0, 7):
+                for roomType in range(0, 4):
+                    for areaType in range(0, 6):
+                        for page in range(1, 101):
+                            if i % 10 == 0:
+                                time.sleep(1)
+                            url = 'https://' + city[i] + '.lianjia.com/zufang/' + 'pg' + str(page) + manners[manner] + towards[toward] + roomTypes[roomType] + areaTypes[areaType] + rentPrices[rentPrice] + '/'
+                            response = requests.get(url=url)
+                            selector = parsel.Selector(response.text)
+                            lis = selector.css('.content__list .content__list--item')
+                            print(url)
+                            for li in lis:
+                                dit = {}
+                                title = li.css('.twoline::text').get().strip('"').strip()
+                                if title == '':
+                                    title = li.css('.content__list--item--title a::text').get().strip('"').strip()
+                                dit['名称'] = title
+                                if len(li.css('.content__list--item--des a::text').getall()) > 2:
+                                    location1 = li.css('.content__list--item--des a::text').get()
+                                    dit['区'] = location1
+                                    location2 = li.css('.content__list--item--des a::text').getall()[1]
+                                    dit['板块'] = location2
+                                    location3 = li.css('.content__list--item--des a::text').getall()[2]
+                                    dit['具体地址'] = location3
+                                if len(
+                                        li.css('.content__list--item--des::text').getall()) == 8:
+                                    area = li.css('.content__list--item--des::text').getall()[4].strip('"').strip()
+                                    to = li.css('.content__list--item--des::text').getall()[5].strip('"').strip()
+                                    room = li.css('.content__list--item--des::text').getall()[6].strip('"').strip()
+                                elif len(li.css('.content__list--item--des::text').getall()) == 5:
+                                    area = li.css('.content__list--item--des::text').getall()[2].strip('"').strip()
+                                    to = li.css('.content__list--item--des::text').getall()[3].strip('"').strip()
+                                    room = li.css('.content__list--item--des::text').getall()[4].strip('"').strip()
+                                elif len(li.css('.content__list--item--des::text').getall()) == 3:
+                                    area = li.css('.content__list--item--des::text').getall()[0].strip('"').strip()
+                                    to = li.css('.content__list--item--des::text').getall()[1].strip('"').strip()
+                                    room = li.css('.content__list--item--des::text').getall()[2].strip('"').strip()
+                                elif len(li.css('.content__list--item--des::text').getall()) == 9:
+                                    area = li.css('.content__list--item--des::text').getall()[5].strip('"').strip()
+                                    to = li.css('.content__list--item--des::text').getall()[6].strip('"').strip()
+                                    room = li.css('.content__list--item--des::text').getall()[7].strip('"').strip()
+                                else:
+                                    print(len(li.css('.content__list--item--des::text').getall()))
+                                    print(title)
+                                if '㎡' in area:
+                                    dit['面积（㎡）'] = area.rstrip('㎡')
+                                if '租' not in to:
+                                    dit['朝向'] = to
+                                dit['房型'] = room
+                                price = li.css(
+                                    '.content__list--item-price em::text').get()
+                                dit['租价（元/月）'] = price
+                                csv_writer[i].writerow(dit)  
+                            if len(lis) < 30:  # 如果已经没有信息了就跳过本次筛选
+                                break
